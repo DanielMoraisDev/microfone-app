@@ -101,10 +101,10 @@ function Home() {
 
           const prevY =
             i > 0 ? ((dataArray[i - 1] / 128.0) * canvas.height) / 2 : y;
-          const nextY =
-            i < bufferLength - 1
-              ? ((dataArray[i + 1] / 128.0) * canvas.height) / 2
-              : y;
+          // const nextY =
+          //   i < bufferLength - 1
+          //     ? ((dataArray[i + 1] / 128.0) * canvas.height) / 2
+          //     : y;
 
           const smoothedY = prevY + (y - prevY) * smoothness;
 
