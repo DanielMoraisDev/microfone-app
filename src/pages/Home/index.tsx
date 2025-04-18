@@ -60,7 +60,7 @@ function Home() {
         (window as any).webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 1024; // Tamanho reduzido para melhorar a performance
+      analyser.fftSize = 2048; // Tamanho reduzido para melhorar a performance
 
       const bufferLength = analyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
