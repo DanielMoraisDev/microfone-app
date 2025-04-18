@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
 
 type AudioInputDevice = {
   deviceId: string;
@@ -18,11 +19,14 @@ function Home() {
   const [devices, setDevices] = useState<AudioInputDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [listening, setListening] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [sensitivity, setSensitivity] = useState(0.2);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number>(0);
+  const gainNodeRef = useRef<GainNode | null>(null);
 
   useEffect(() => {
     const loadDevices = async () => {
@@ -48,6 +52,12 @@ function Home() {
     loadDevices();
   }, []);
 
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = volume;
+    }
+  }, [volume]);
+
   const startListening = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -60,7 +70,11 @@ function Home() {
         (window as any).webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048; // Tamanho reduzido para melhorar a performance
+      analyser.fftSize = 2048;
+
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = volume;
+      gainNodeRef.current = gainNode;
 
       const bufferLength = analyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
@@ -68,9 +82,9 @@ function Home() {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
 
-      // Conectar à saída de áudio
-      source.connect(audioContext.destination);
-      source.connect(analyser); // Somente para análise
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      source.connect(analyser);
 
       const draw = () => {
         if (!ctx || !canvas) return;
@@ -79,7 +93,6 @@ function Home() {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Gradiente suave
         const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
         gradient.addColorStop(0, "#6EE7B7");
         gradient.addColorStop(1, "#3B82F6");
@@ -93,20 +106,14 @@ function Home() {
         const sliceWidth = canvas.width / bufferLength;
         let x = 0;
 
-        // Suavização - interpolando pontos
-        const smoothness = 0.2; // Controle de suavização
         for (let i = 0; i < bufferLength; i++) {
           const v = dataArray[i] / 128.0;
           const y = (v * canvas.height) / 2;
 
           const prevY =
             i > 0 ? ((dataArray[i - 1] / 128.0) * canvas.height) / 2 : y;
-          // const nextY =
-          //   i < bufferLength - 1
-          //     ? ((dataArray[i + 1] / 128.0) * canvas.height) / 2
-          //     : y;
 
-          const smoothedY = prevY + (y - prevY) * smoothness;
+          const smoothedY = prevY + (y - prevY) * sensitivity;
 
           if (i === 0) {
             ctx.moveTo(x, smoothedY);
@@ -175,6 +182,28 @@ function Home() {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Volume</label>
+            <Slider
+              min={0}
+              max={2}
+              step={0.01}
+              value={[volume]}
+              onValueChange={([v]) => setVolume(v)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Sensibilidade</label>
+            <Slider
+              min={0}
+              max={1}
+              step={0.01}
+              value={[sensitivity]}
+              onValueChange={([s]) => setSensitivity(s)}
+            />
+          </div>
 
           <div className="flex justify-center">
             <Button onClick={listening ? stopListening : startListening}>
